@@ -174,30 +174,97 @@ mean_absolute_error(vtion_y,vtion_predictions)
 Your mean absolute error for the in-sample data was about 500 dollars. Out-of-sample it is more than 250,000 dollars. This is the difference between a model that is almost exactly right, and one that is unusable for most practical purposes. As a point of reference, the average home value in the validation data is 1.1 million dollars. So the error in new data is about a quarter of the average home value.
 
 
+## underfitting and overfitting
+Apply these ideas to make your models more accurate. Experiment with alternative models and see which gives the best predictions it's determined the tree's depth (how many splits it makes before coming to a prediction).
+
+As the tree gets deeper, the dataset gets sliced up into leaves with fewer houses. Each level of the tree splits the data into 2 leaves or groups, adding more splits at each level represent 2^n (2 leaves at n levels). In practice, it's not uncommon for a tree to have 10 splits between the top level (all houses) and a leaf (1024 leaves).
+
+When we divide the houses amongst many leaves, we also have **fewer houses in each leaf**. Leaves with very few houses will make predictions that are quite close to those homes' actual values, but they may **make very unreliable predictions for new data** (because each prediction is based on only a few houses).
+
+**This is a phenomenon called overfitting**, where a model matches the training data almost perfectly, but does poorly in validation and other new data.
+
+On the flip side, **if we make our tree very shallow, it doesn't divide up the houses into very distinct groups**. At an extreme, if a tree divides houses into only 2 or 4, each group still has a wide variety of houses. Resulting predictions may be far off for most houses, even in the training data (and it will be bad in validation too for the same reason). **When a model fails to capture important distinctions and patterns in the data, so it performs poorly even in training data, that is called underfitting**.
+
+**We want to find the sweet spot between underfitting and overfitting**.
 
 
+### max_leaf_nodes
+For controlling the tree depth, the max_leaf_nodes argument provides a very sensible way to control overfitting vs underfitting.
+~~~
+import pandas as pd
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import mean_absolute_error
+
+# file
+fpath = "mdrent.csv"
+fhand = pd.read_csv(fpath)
+clean = fhand.dropna(axis=0)
+
+# target and predictor variables
+y = clean.Price
+columns = ['Rooms','Bathroom','Landsize','Lattitude','Longtitude']
+x = clean[columns]
+
+# training & validation data
+train_x, vtion_x, train_y, vtion_y = train_test_split(x, y, random_state = 0)
+
+# compare MAE scores
+def get_mae(max_leaf_nodes, train_x,vtion_x,train_y,vtion_y):
+  model = DecisionTreeRegressor(max_leaf_nodes=max_leaf_nodes,random_state=0)
+  model.fit(train_x,train_y)
+  prediction = model.predict(vtion_y)
+  mae = mean_absolute_error(vtion_y,prediction)
+  return mae
+
+# compare MAE with differing values of max_leaf_nodes
+for max_leaf_nodes in [5, 50, 500, 5000]:
+  nw_mae = get_mae(max_leaf_nodes,train_x,vtion_x,train_y,vtion_y)
+  print("Max leaf nodes: %d \t\t Mean Absolute Error: %d" %(max_leaf_nodes,nw_mae))
+
+>>> Max leaf nodes: 5  		 Mean Absolute Error:  347380
+>>> Max leaf nodes: 50  		 Mean Absolute Error:  258171
+>>> Max leaf nodes: 500  		 Mean Absolute Error:  243495
+>>> Max leaf nodes: 5000  		 Mean Absolute Error:  254983
+~~~
+
+Overfitting: capturing spurious patterns that won't recur in the future, leading to less accurate predictions.
+
+Underfitting: failing to capture relevant patterns, again leading to less accurate predictions.
+
+We use validation data, which isn't used in model training, to measure a candidate model's accuracy. This lets us try many candidate models and keep the best one.
 
 
+# Random Forest
+Random Forest can lead to better performance because uses many trees and it makes a prediction by averaging the predictions of each component tree. It generally has much **better predictive accuracy** than a single decision tree. There are models with better performance but many of those are sensitive to getting the right parameters, the Random Forest model **works well with default parameters**.
+~~~
+import pandas as pd
+from sklearn.metrics import mean_absolute_error
+from sklearn.modele_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
 
+# load file
+fpath = "mdrent.csv"
+fhand = pd.read_csv(fpath)
+clean = fhand.dropna(axis=0)
 
+# target & predictor variables
+y = clean.Price
+columns = ['Rooms','Bathroom','Landsize','Lattitude','Longtitude']
+x = clean[columns]
 
+# training & validation data
+train_x, vtion_x, train_y, vtion_y = train_test_split(x, y, random_state = 0)
 
+# fit
+model = RandomForestRegressor(random_state = 1)
+model.fit(train_x, train_y)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# prediction
+prediction = model.predict(vtion_x)
+mean_absolute_error(vtion_y,prediction)
+>>> 191669.7536453626
+~~~
+A big improvement over the best decision tree error of 250,000.
 
 
 
